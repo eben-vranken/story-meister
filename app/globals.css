@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+    --background: #ffffff;
+    --foreground: #1E1E1E;
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background: #1E1E1E;
+        --foreground: #ffffff;
+    }
+}
+
+body,
+html {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+body>* {
+    width: 85%;
+}
+
+body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: 'Geist Mono', Helvetica, sans-serif;
+}
+
+input,
+textarea {
+    outline: none;
+}
+
+input,
+textarea:focus {
+    outline: none;
+}
