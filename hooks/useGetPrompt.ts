@@ -23,7 +23,7 @@ export default function useGetPrompt(active: boolean) {
             const subjectNoun = pick(elements.subjects);
 
             setPrompt({
-                subject: withAdjective(subjectNoun),
+                subject: pick(elements.subjects),
                 verb: pick(elements.verbs),
                 object: pick(elements.objects),
                 setting: pick(elements.settings),

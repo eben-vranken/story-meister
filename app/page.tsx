@@ -64,7 +64,7 @@ export default function Home() {
       {prompt && (
         <form
           onSubmit={handleSave}
-          className="gap-y-3 flex flex-col w-full border p-3 h-full"
+          className="gap-y-3 flex flex-col w-full border border-white/40  p-3 h-full"
         >
           <h1 className="text-light underline font-bold flex items-center gap-x-2">
             <Pen size={25} className="text-emerald-300" /> Story-From-Prompt
@@ -99,6 +99,7 @@ export default function Home() {
             rows={10}
             value={story}
             onChange={(e) => setStory(e.target.value)}
+            placeholder="Start writing,..."
           />
 
           <button
