@@ -1,11 +1,14 @@
 'use client'
 
 import { invoke } from "@tauri-apps/api/core";
-import { useState, useMemo, FormEvent, useEffect } from "react";
+import { useState, useMemo, useEffect, FormEvent } from "react";
 import useGetPrompt from "@/hooks/useGetPrompt";
-import { Pen } from "phosphor-react";
+import { Pen, ArrowClockwise } from "phosphor-react";
 
-type StoryRow = {
+/**
+ * TYPES ------------------------------------------------------------------
+ */
+export type StoryRow = {
   id: number;
   story: string;
   subject: string;
@@ -16,16 +19,102 @@ type StoryRow = {
   created_at: string;
 };
 
-export default function Home() {
-  const [day] = useState("Monday");
-  const prompt = useGetPrompt(day === "Monday");
+export type Prompt = {
+  subject: string;
+  verb: string;
+  object: string;
+  setting: string;
+  consequences: string;
+};
 
-  const [story, setStory] = useState("");
-  const wordCount = useMemo(
+/**
+ * LOCAL‑STORAGE HELPERS --------------------------------------------------
+ */
+const LS_KEYS = {
+  STORY: "draft_story_v1",
+};
+
+const loadDraftStory = () => {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(LS_KEYS.STORY) || "";
+};
+
+const saveDraftStory = (story: string) => {
+  if (typeof window !== "undefined") localStorage.setItem(LS_KEYS.STORY, story);
+};
+
+const clearDraftStory = () => {
+  if (typeof window !== "undefined") localStorage.removeItem(LS_KEYS.STORY);
+};
+
+/**
+ * COMPONENT --------------------------------------------------------------
+ */
+export default function Home() {
+  /**
+   * PROMPT --------------------------------------------------------------
+   * `refreshToggle` is simply flipped each time the user clicks “New Prompt”.
+   * Because it’s passed directly into `useGetPrompt`, every change triggers a
+   * new fetch cycle. The hook stays happy (boolean), and we never have to rely
+   * on truthy/falsey gymnastics.
+   */
+  const [refreshToggle, setRefreshToggle] = useState(true);
+  const prompt = useGetPrompt(refreshToggle);
+
+  /**
+   * STORY (with persistent draft) ---------------------------------------
+   */
+  const [story, setStory] = useState<string>(() => loadDraftStory());
+
+  // Persist the draft to localStorage whenever it changes
+  useEffect(() => {
+    saveDraftStory(story);
+  }, [story]);
+
+  const wordCount = useMemo<number>(
     () => (story.trim() ? story.trim().split(/\s+/).length : 0),
     [story]
   );
 
+  /**
+   * HANDLERS -------------------------------------------------------------
+   */
+  const handleNewPrompt = () => {
+    // Force a false→true flip so useGetPrompt receives `true` again and fetches.
+    setRefreshToggle(false);
+    // Queue the second update in the next tick so React processes both.
+    setTimeout(() => setRefreshToggle(true), 0);
+  };
+
+  const handleSave = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!prompt || wordCount < 500) return; // Guard against edge‑cases
+
+    await invoke("save_story", {
+      payload: {
+        story,
+        subject: prompt.subject,
+        verb: prompt.verb,
+        object: prompt.object,
+        setting: prompt.setting,
+        consequences: prompt.consequences,
+      },
+    });
+
+    clearDraftStory();
+    setStory("");
+
+    try {
+      const stories = await invoke<StoryRow[]>("list_stories");
+      console.log("[UI] 📚 stories after save:", stories);
+    } catch (err) {
+      console.error("[UI] ❌ list_stories after save failed:", err);
+    }
+  };
+
+  /**
+   * DEBUG: Log existing stories once on mount ---------------------------
+   */
   useEffect(() => {
     (async () => {
       try {
@@ -37,39 +126,32 @@ export default function Home() {
     })();
   }, []);
 
-  async function handleSave() {
-    await invoke("save_story", {
-      /*  key MUST be called exactly `payload`
-          because that’s the third parameter in Rust                   ↓↓↓↓ */
-      payload: {
-        story,
-        subject: prompt?.subject,
-        verb: prompt?.verb,
-        object: prompt?.object,
-        setting: prompt?.setting,
-        consequences: prompt?.consequences,
-      },
-    });
-
-    try {
-      const stories = await invoke<StoryRow[]>("list_stories");
-      console.log("[UI] 📚 stories after save:", stories);
-    } catch (err) {
-      console.error("[UI] ❌ list_stories after save failed:", err);
-    }
-  }
-
+  /**
+   * RENDER ---------------------------------------------------------------
+   */
   return (
     <main className="h-full w-full flex flex-col justify-between mb-10">
-      {prompt && (
-        <form
-          onSubmit={handleSave}
-          className="gap-y-3 flex flex-col w-full border border-white/40  p-3 h-full"
-        >
-          <h1 className="text-light underline font-bold flex items-center gap-x-2">
-            <Pen size={25} className="text-emerald-300" /> Story-From-Prompt
-          </h1>
+      {/* --- NEW PROMPT BUTTON (always visible) ---------------------- */}
+      <button
+        type="button"
+        onClick={handleNewPrompt}
+        title="Generate a new prompt"
+        className="self-start mb-3 flex items-center gap-x-1 border border-emerald-300 px-2 py-1 text-sm rounded hover:bg-emerald-300/10 transition"
+      >
+        <ArrowClockwise size={16} className="text-emerald-300" /> New Prompt
+      </button>
 
+      {/* --- STORY FORM ---------------------------------------------- */}
+      <form
+        onSubmit={handleSave}
+        className="gap-y-3 flex flex-col w-full border border-white/40 p-3 h-full"
+      >
+        <h1 className="text-light underline font-bold flex items-center gap-x-2">
+          <Pen size={25} className="text-emerald-300" /> Story‑From‑Prompt
+        </h1>
+
+        {/* Prompt preview OR loading indicator ---------------------- */}
+        {prompt ? (
           <section className="flex justify-between">
             <p className="italic opacity-80">
               <span className="text-pink-300">A {prompt.subject}</span>&nbsp;
@@ -79,40 +161,47 @@ export default function Home() {
               <span className="text-amber-300">{prompt.consequences}</span>.
             </p>
 
+            {/* Word counter */}
             <span className="opacity-80">
               <span
                 className={
-                  wordCount > 500 ? "text-green-500" : "text-red-500"
+                  wordCount >= 500 ? "text-green-500" : "text-red-500"
                 }
               >
                 {wordCount}
               </span>
-              /<span>500</span>
+              /500
             </span>
           </section>
+        ) : (
+          <p className="italic opacity-70">Fetching a fresh prompt…</p>
+        )}
 
-          <hr className="opacity-50" />
+        <hr className="opacity-50" />
 
-          <textarea
-            id="story"
-            className="border border-gray-500 p-3 flex-1"
-            rows={10}
-            value={story}
-            onChange={(e) => setStory(e.target.value)}
-            placeholder="Start writing,..."
-          />
+        {/* Story textarea ------------------------------------------ */}
+        <textarea
+          id="story"
+          className="border border-gray-500 p-3 flex-1"
+          rows={10}
+          value={story}
+          onChange={(e) => setStory(e.target.value)}
+          placeholder="Start writing…"
+        />
 
-          <button
-            type="submit"
-            className={`border-2 px-3 text-lg font-bold ${wordCount >= 500
-              ? "border-green-300 text-green-300 hover:opacity-100"
-              : "border-red-500 text-red-500 opacity-50"
-              }`}
-          >
-            Save
-          </button>
-        </form>
-      )}
+        {/* Save button */}
+        <button
+          type="submit"
+          disabled={!prompt || wordCount < 500}
+          className={`border-2 px-3 text-lg font-bold transition-opacity ${
+            !prompt || wordCount < 500
+              ? "border-red-500 text-red-500 opacity-50 cursor-not-allowed"
+              : "border-green-300 text-green-300 hover:opacity-100"
+          }`}
+        >
+          Save
+        </button>
+      </form>
     </main>
   );
 }
