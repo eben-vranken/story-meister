@@ -1,8 +1,8 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-    "productName": "writing-exercises",
+    "productName": "story-meister",
     "version": "0.1.0",
-    "identifier": "com.tauri.dev",
+    "identifier": "story-meister",
     "build": {
         "frontendDist": "../out",
         "devUrl": "http://localhost:3000",
@@ -16,7 +16,7 @@
     },
     "app": {
         "windows": [{
-            "title": "writing-exercises",
+            "title": "story-meister",
             "width": 1280,
             "minWidth": 1280,
             "height": 720,
