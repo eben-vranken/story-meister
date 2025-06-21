@@ -187,17 +187,17 @@ export default function Home() {
           value={story}
           onChange={(e) => setStory(e.target.value)}
           placeholder="Start writing…"
+          spellCheck="true"
         />
 
         {/* Save button */}
         <button
           type="submit"
           disabled={!prompt || wordCount < 500}
-          className={`border-2 px-3 text-lg font-bold transition-opacity ${
-            !prompt || wordCount < 500
-              ? "border-red-500 text-red-500 opacity-50 cursor-not-allowed"
-              : "border-green-300 text-green-300 hover:opacity-100"
-          }`}
+          className={`border-2 px-3 text-lg font-bold transition-opacity ${!prompt || wordCount < 500
+            ? "border-red-500 text-red-500 opacity-50 cursor-not-allowed"
+            : "border-green-300 text-green-300 hover:opacity-100"
+            }`}
         >
           Save
         </button>
