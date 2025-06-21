@@ -2,7 +2,7 @@ This is a Tauri project with NextJS as the front-end framework.
 
 ## Getting Started
 
-First, run install the necessary packages.:
+First, run install the necessary packages:
 
 ```bash
 npm i install
