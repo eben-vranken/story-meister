@@ -10,7 +10,13 @@ First, run install the necessary packages:
 npm i install
 ```
 
-Next, start the development development server:
+To create an executable build the project with:
+
+```bash
+npx tauri build
+```
+
+To create a development server:
 
 ```bash
 npx tauri dev
