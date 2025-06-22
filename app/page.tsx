@@ -1,6 +1,7 @@
 'use client'
 
 import WriteFromPrompt from "@/components/writing/WriteFromPrompt"
+import WriteYourself from "@/components/writing/WriteYourself"
 import { useState } from "react"
 
 const Home = () => {
@@ -30,6 +31,7 @@ const Home = () => {
             {
                 {
                     'from-prompt': <WriteFromPrompt />,
+                    'write-yourself': <WriteYourself />
                 }[mode]
             }
 

@@ -19,8 +19,8 @@
             "title": "story-meister",
             "width": 1280,
             "minWidth": 1280,
-            "height": 720,
-            "minHeight": 720,
+            "height": 1280,
+            "minHeight": 1280,
             "resizable": true,
             "fullscreen": false
         }],

@@ -88,7 +88,7 @@ export default function WriteFromPrompt() {
 
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!prompt || wordCount < 500) return; // Guard against edge‑cases
+    if (!prompt || wordCount < 1) return; // Guard against edge‑cases
 
     await invoke("save_story", {
       payload: {
@@ -195,8 +195,8 @@ export default function WriteFromPrompt() {
         {/* Save button */}
         <button
           type="submit"
-          disabled={!prompt || wordCount < 500}
-          className={`border-2 px-3 text-lg font-bold transition-opacity ${!prompt || wordCount < 500
+          disabled={!prompt || wordCount < 1}
+          className={`border-2 px-3 text-lg font-bold transition-opacity ${!prompt || wordCount < 1
             ? "border-red-500 text-red-500 opacity-50 cursor-not-allowed"
             : "border-green-300 text-green-300 hover:opacity-100"
             }`}

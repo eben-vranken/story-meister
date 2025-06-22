@@ -2,22 +2,64 @@
 
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { StoryRow } from '@/hooks/useStories';   // just for the TS type
+
+/* --------------------------------------------------------------------------
+   TYPES
+   --------------------------------------------------------------------------*/
+
+type PromptStoryRow = {
+    id: number;
+    story: string;
+    subject: string;
+    verb: string;
+    object_: string;
+    setting: string;
+    consequences: string;
+    created_at: string;
+    kind: 'prompt';
+};
+
+type SelfWrittenStoryRow = {
+    id: number;
+    story: string;
+    name: string;
+    created_at: string;
+    kind: 'self';
+};
+
+type AnyStoryRow = PromptStoryRow | SelfWrittenStoryRow;
+
+/* --------------------------------------------------------------------------
+   COMPONENT
+   --------------------------------------------------------------------------*/
 
 const Stories = () => {
     /* ─────────────────────────────────────────────── state ── */
-    const [stories, setStories] = useState<StoryRow[]>([]);
-    const [loading, setLoading] = useState(true);              // ✅ loading flag
-    const [openIds, setOpenIds] = useState<Set<number>>(new Set()); // ✅ toggles
+    const [stories, setStories] = useState<AnyStoryRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [openIds, setOpenIds] = useState<Set<number>>(new Set());
 
     /* ─────────────────────────────────── helpers ── */
     const fetchStories = async () => {
         setLoading(true);
         try {
-            const res = await invoke<StoryRow[]>('list_stories');
-            setStories(res);
+            const [promptRows, selfRows] = await Promise.all([
+                invoke<Omit<PromptStoryRow, 'kind'>[]>('list_stories'),
+                invoke<Omit<SelfWrittenStoryRow, 'kind'>[]>('list_self_written_stories'),
+            ]);
+
+            /*  Tag the rows with their origin & merge  */
+            const unified: AnyStoryRow[] = [
+                ...promptRows.map(r => ({ ...r, kind: 'prompt' as const })),
+                ...selfRows.map(r => ({ ...r, kind: 'self' as const })),
+            ].sort(
+                (a, b) =>
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+
+            setStories(unified);
         } catch (err) {
-            console.error('[UI] ❌ list_stories failed:', err);
+            console.error('[UI] ❌ fetch stories failed:', err);
         } finally {
             setLoading(false);
         }
@@ -27,15 +69,19 @@ const Stories = () => {
         fetchStories();
     }, []);
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = async (row: AnyStoryRow) => {
         try {
-            await invoke('delete_story', { id });
-            /*  remove the story locally … */
-            setStories(prev => prev.filter(s => s.id !== id));
-            /* …and make sure its row is no longer “open” */
+            if (row.kind === 'prompt') {
+                await invoke('delete_story', { id: row.id });
+            } else {
+                await invoke('delete_self_written_story', { id: row.id });
+            }
+
+            /*  Remove locally & close row (if open)  */
+            setStories(prev => prev.filter(s => s.id !== row.id));
             setOpenIds(prev => {
                 const next = new Set(prev);
-                next.delete(id);
+                next.delete(row.id);
                 return next;
             });
         } catch (err) {
@@ -60,7 +106,7 @@ const Stories = () => {
     }
 
     return (
-        <main className="h-full w-full flex flex-col gap-y-4 mb-10">
+        <main className="h-full w-full flex flex-col gap-y-4 mb-10 mt-2">
             <h1 className="text-xl font-bold">All Stories</h1>
 
             <div className="overflow-x-auto">
@@ -68,18 +114,19 @@ const Stories = () => {
                     <thead className="border-b">
                         <tr>
                             <th className="p-2 w-10" />
-                            <th className="p-2">Prompt</th>
+                            <th className="p-2">Type</th>
+                            <th className="p-2">Prompt / Name</th>
                             <th className="p-2 whitespace-nowrap">Created</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         {stories.map(s => (
-                            <tr key={s.id} className="border-b align-top">
+                            <tr key={`${s.kind}-${s.id}`} className="border-b align-top">
                                 {/* 🗑 delete */}
                                 <td className="p-2 align-top">
                                     <button
-                                        onClick={() => handleDelete(s.id)}
+                                        onClick={() => handleDelete(s)}
                                         className="text-red-500 hover:text-red-700"
                                         title="Delete"
                                     >
@@ -87,7 +134,12 @@ const Stories = () => {
                                     </button>
                                 </td>
 
-                                {/* ▸ / ▾ toggle & story */}
+                                {/* 📛 type */}
+                                <td className="p-2 align-top">
+                                    {s.kind === 'prompt' ? 'Prompt' : 'Self‑written'}
+                                </td>
+
+                                {/* ▸ / ▾ toggle & story preview */}
                                 <td className="p-2">
                                     <button
                                         onClick={() => toggle(s.id)}
@@ -96,11 +148,18 @@ const Stories = () => {
                                         <span className="mr-1">
                                             {openIds.has(s.id) ? '▾' : '▸'}
                                         </span>
-                                        <span className="text-pink-300">A {s.subject}</span>&nbsp;
-                                        <span className="text-sky-300">{s.verb}</span>&nbsp;
-                                        <span className="text-emerald-300">{s.object_}</span>&nbsp;
-                                        <span className="text-violet-300">{s.setting}</span>&nbsp;
-                                        <span className="text-amber-300">{s.consequences}</span>
+
+                                        {s.kind === 'prompt' ? (
+                                            <>
+                                                <span className="text-pink-300">A {s.subject}</span>&nbsp;
+                                                <span className="text-sky-300">{s.verb}</span>&nbsp;
+                                                <span className="text-emerald-300">{s.object_}</span>&nbsp;
+                                                <span className="text-violet-300">{s.setting}</span>&nbsp;
+                                                <span className="text-amber-300">{s.consequences}</span>
+                                            </>
+                                        ) : (
+                                            <span className="text-yellow-300">{s.name}</span>
+                                        )}
                                     </button>
 
                                     {openIds.has(s.id) && (
@@ -108,7 +167,7 @@ const Stories = () => {
                                     )}
                                 </td>
 
-                                {/* timestamp */}
+                                {/* 🕒 timestamp */}
                                 <td className="p-2 text-sm opacity-70 whitespace-nowrap">
                                     {s.created_at}
                                 </td>
