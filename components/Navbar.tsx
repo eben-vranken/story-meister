@@ -2,7 +2,7 @@ import Link from "next/link"
 
 const Navbar = () => {
     return (
-        <nav className="h-16 w-full py-1 flex justify-between items-center top-0">
+        <nav className="h-16 w-full py-1 flex justify-between items-center top-0 border-b border-b-white/40">
             <h1 className="font-semibold underline text-1xl">
                 story-meister
             </h1>

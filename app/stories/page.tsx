@@ -96,7 +96,11 @@ const Stories = () => {
                                         <span className="mr-1">
                                             {openIds.has(s.id) ? '▾' : '▸'}
                                         </span>
-                                        {s.subject} {s.verb} {s.object_}
+                                        <span className="text-pink-300">A {s.subject}</span>&nbsp;
+                                        <span className="text-sky-300">{s.verb}</span>&nbsp;
+                                        <span className="text-emerald-300">{s.object_}</span>&nbsp;
+                                        <span className="text-violet-300">{s.setting}</span>&nbsp;
+                                        <span className="text-amber-300">{s.consequences}</span>
                                     </button>
 
                                     {openIds.has(s.id) && (
